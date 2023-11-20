@@ -1,0 +1,7 @@
+{
+  "vm_name": "INSERT_VM_NAME",
+  "ssh_username": "INSERT_USERNAME",
+  "ssh_password": "INSERT_USERNAME_PASSWORD",
+  "root_password": "INSERT_ROOTUSER_PASSWORD",
+  "iso_checksum": "INSERT_ISO_CHECKSUM"
+}

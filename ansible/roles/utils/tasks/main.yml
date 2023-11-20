@@ -1,0 +1,23 @@
+---
+- name: Install Requisite APT Packages
+  apt:
+    name: ['dnsutils', 'jq', 'needrestart', 'python3-pip', ' python3.11-venv', 'sslscan', 'tmux', 'whois']
+    state: present
+    update_cache: yes
+
+- name: Install Requisite PIP Packages
+  pip:
+    name:
+      - pipx
+      - pipenv
+      - pyinstaller
+    executable: pip3
+    extra_args: --break-system-packages
+    state: present
+
+- name: Add Binary to PATH
+  copy:
+    dest: "{{user_home}}/.bash_aliases" 
+    content: |
+      PATH="$HOME/.local/bin:$PATH"
+      

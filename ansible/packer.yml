@@ -1,0 +1,8 @@
+---
+- name: Configure Machine
+  hosts: localhost
+  connection: local 
+  become: true
+  become_method: sudo
+  roles:
+    - utils

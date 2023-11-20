@@ -1,0 +1,80 @@
+{
+  "description": "Debian Golden Image for Network/Host Defense System",
+  "variables": {
+    "vm_name": "{{ user `vm_name` }}",
+    "ssh_username": "{{ user `ssh_username` }}",
+    "ssh_password": "{{ user `ssh_password` }}",
+    "iso_url": "{{env `ISO_URL` }}",
+    "iso_checksum": "{{ user `iso_checksum` }}"
+  },
+  "builders": [
+    {
+      "type": "virtualbox-iso",
+      "vm_name": "{{ user `vm_name` }}",
+      "guest_os_type": "Debian_64",
+      "guest_additions_mode": "disable",
+      "virtualbox_version_file": "",
+      "iso_url": "{{ user `iso_url` }}",
+      "iso_checksum": "{{ user `iso_checksum` }}",
+      "headless": false,
+      "http_directory": "http",
+      "http_port_min": 10082,
+      "http_port_max": 10085,
+      "boot_wait": "10s",
+      "boot_command": [  
+        "<esc><wait>",
+        "auto ",
+        "preseed/url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/preseed.cfg ",
+        "<enter>"
+      ],  
+      "vboxmanage": [
+        ["modifyvm", "{{ .Name }}", "--nat-localhostreachable1", "on"],
+        ["modifyvm", "{{ .Name }}", "--memory", 2048],
+        ["modifyvm", "{{ .Name }}", "--cpus", 2]
+      ],
+      "communicator": "ssh",
+      "ssh_username": "{{ user `ssh_username` }}",
+      "ssh_password": "{{ user `ssh_password` }}",
+      "ssh_port": 22,
+      "ssh_host_port_min": 2222,
+      "ssh_host_port_max": 2225,
+      "ssh_wait_timeout": "60m",
+      "ssh_pty": true,
+      "shutdown_command": "echo {{ user `ssh_password` }} | sudo -S shutdown -P now"
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "sudo apt update -y",
+        "sudo apt upgrade -y",
+        "sudo apt install -y ansible"
+      ]
+    },
+    {
+      "type": "ansible-local",
+      "playbook_dir": "ansible",
+      "playbook_file": "ansible/packer.yml",
+      "extra_arguments": [
+        "--extra-vars",
+        "'user_home=/home/{{ user `ssh_username` }}'"
+      ]
+    }
+  ],
+  "post-processors": [
+    [
+      {
+        "type": "vagrant",
+        "compression_level": "9",
+        "output": "box/{{ user `vm_name`}}.box",
+        "only": ["virtualbox-iso"]
+      },
+      {
+        "type": "checksum",
+        "checksum_types": ["md5", "sha256", "sha512"],
+        "output": "box/checksums/{{.ChecksumType}}.txt"
+      }
+    ]
+  ]
+}
