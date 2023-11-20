@@ -1,0 +1,5 @@
+---
+- name: Configure Machine
+  hosts: nhidps
+  become: true
+  become_method: sudo

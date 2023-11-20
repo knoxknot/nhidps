@@ -1,0 +1,7 @@
+box
+packer.log
+template-vars.json
+variables.yaml
+nhidps
+nhidps.pub
+.vagrant
