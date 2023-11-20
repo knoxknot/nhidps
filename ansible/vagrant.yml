@@ -3,3 +3,8 @@
   hosts: nhidps
   become: true
   become_method: sudo
+  force_handlers: true
+  roles:
+    - nftables
+    # - iptables
+  

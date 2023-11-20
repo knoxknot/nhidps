@@ -1,0 +1,16 @@
+---
+- name: Start Netfilter
+  service:  
+    name: netfilter-persistent
+    state: started 
+    enabled: yes
+
+- name: Reload Netfilter
+  service:
+    name: netfilter-persistent
+    state: reloaded
+
+- name: Restart Netfilter
+  service:  
+    name: netfilter-persistent
+    state: restarted 
