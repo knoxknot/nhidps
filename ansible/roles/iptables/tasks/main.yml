@@ -1,0 +1,32 @@
+---
+- name: Install IPTables Packages
+  apt:
+    name: 
+      - iptables
+      - iptables-persistent
+    state: present
+    update_cache: yes
+
+- name: Restart Netfilter
+  shell: systemctl start netfilter-persistent
+
+- name: Copy IPTables Rules
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: 0640
+  with_items:
+    - { src: rules.v4, dest: /etc/iptables/rules.v4 }
+    - { src: rules.v6, dest: /etc/iptables/rules.v6 }
+  register: iptables_rules
+
+- name: Validate Apply and Persist Firewall Rules
+  shell: |
+    iptables-restore -t /etc/iptables/rules.v4
+    iptables-restore /etc/iptables/rules.v4
+    ip6tables-restore -t /etc/iptables/rules.v6 
+    ip6tables-restore /etc/iptables/rules.v6 
+    netfilter-persistent save
+  when: iptables_rules.changed

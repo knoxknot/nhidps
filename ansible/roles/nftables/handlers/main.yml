@@ -1,0 +1,17 @@
+
+---
+- name: Start NFTables
+  service:  
+    name: nftables
+    state: started 
+    enabled: yes
+
+- name: Reload NFTables
+  service:
+    name: nftables
+    state: reloaded
+
+- name: Restart NFTables
+  service:  
+    name: nftables
+    state: restarted 

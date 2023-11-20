@@ -1,0 +1,28 @@
+#!/usr/sbin/nft -f
+
+flush ruleset
+
+table inet filter {
+  chain input {
+    type filter hook input priority 0; policy drop;
+    limit rate 5/minute burst 5 packets counter log prefix "inettables_INPUT_denied: " level debug
+    iif lo accept
+    tcp dport 22 accept
+    tcp dport 53 accept
+    udp dport 53 accept
+    tcp dport 443 accept
+    ct state established,related accept
+    reject
+  }
+
+  chain forward {
+    type filter hook forward priority 0; policy drop;
+  }
+
+  chain output {
+    type filter hook output priority 0; policy accept;
+    limit rate 5/minute burst 5 packets counter log prefix "inettables_OUTPUT_denied: " level debug
+    tcp dport 80 drop
+    oifname "lo" accept 
+  }
+}

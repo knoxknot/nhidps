@@ -1,0 +1,23 @@
+---
+- name: Install NFTables Packages
+  apt:
+    name:
+      - nftables
+    state: present
+    update_cache: yes
+
+- name: Start NFTables and Netfilter
+  shell: systemctl start nftables
+
+- name: Add NFTables Rules
+  copy:
+    src: ruleset.nft
+    dest: /etc/nftables.conf
+    owner: root
+    group: root
+    mode: 0755
+  register: ruleset
+
+- name: Validate and Apply Firewall Rules
+  shell: /etc/nftables.conf -c && /etc/nftables.conf
+  when: ruleset.changed
