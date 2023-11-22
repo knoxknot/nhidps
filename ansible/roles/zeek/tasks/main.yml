@@ -1,0 +1,115 @@
+---
+- name: Identify Non-loopback Interface
+  set_fact:
+    host_interface: "{{ ansible_facts.interfaces | reject('search', '^lo$') | first }}"
+
+- name: Identify Network CIDR for Non-loopback Interface
+  set_fact:
+    network_cidr: "{{ ansible_facts[host_interface].ipv4.network }}/{{ansible_facts[host_interface].ipv4.prefix }}"
+  when: host_interface is defined
+
+- name: Install Prerequisite Packages
+  apt:
+    name: ['automake','asciidoctor','bison','flex','cmake','libc-ares-dev','libfl-dev','libjemalloc-dev','libmaxminddb-dev','libpcap-dev','libssl-dev','pkg-config','swig']
+    state: present
+    update_cache: yes
+
+- name: Download Zeek Package and Signature File
+  get_url:
+    url: "{{ item }}"
+    dest: "{{ansible_env.PWD}}/"
+  loop:
+   - https://github.com/zeek/zeek/releases/download/v{{Version}}/zeek-{{Version}}.tar.gz.asc
+   - https://github.com/zeek/zeek/releases/download/v{{Version}}/zeek-{{Version}}.tar.gz
+  register: downloads
+
+- name: Verify File Integrity
+  shell: |
+    curl --tlsv1.3 -s https://keys.openpgp.org/vks/v1/by-fingerprint/962FD2187ED5A1DD82FC478A33F15EAEF8CB8019 | gpg --dearmor -o ./zeek-keyring.gpg
+    gpgv --keyring ./zeek-keyring.gpg zeek-{{Version}}.tar.gz.asc zeek-{{Version}}.tar.gz 
+  args:
+    chdir: "{{ansible_env.PWD}}/"
+  when: downloads.changed
+
+- name: Unpack Zeek Package
+  unarchive:
+    src: "{{ansible_env.PWD}}/zeek-{{Version}}.tar.gz"
+    dest: "{{ansible_env.PWD}}/"
+    remote_src: yes
+
+- name: Create Zeek Swap File
+  shell: |
+    mkdir -p /var/zeek
+    dd if=/dev/zero of=/var/zeek/swap0 bs=64M count=64
+    chmod 600 /var/zeek/swap0
+    mkswap /var/zeek/swap0
+    swapon /var/zeek/swap0
+  args:
+    creates: /var/zeek/swap0
+  register: zeek_swapfile
+
+- name: Build and Install Zeek
+  become_user: "{{ansible_env.SUDO_USER}}"
+  shell: |
+    ./configure --enable-jemalloc
+    make
+    sudo make install
+  run_once: true
+  args:
+    chdir: "{{ansible_env.PWD}}/zeek-{{Version}}"
+
+- name: Disable and Delete the Zeek Swap File
+  shell: |
+    swapoff /var/zeek/swap0
+    rm -fr /var/zeek
+  ignore_errors: true
+  when: zeek_swapfile.changed
+
+- name: Add Zeek to PATH
+  blockinfile:
+    path: "{{ansible_env.PWD}}/.bash_aliases"
+    block: |
+      PATH="/usr/local/zeek/bin:$PATH"
+
+- name: Wait for Zeek Local Site to be Installed
+  wait_for:
+    path: /usr/local/zeek/share/zeek/site/local.zeek
+
+- name: Add Systemd Service and GeoIP Configuration Files
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: 0644
+  with_items:
+    - { src: zeek.service, dest: /etc/systemd/system/zeek.service }
+    - { src: conn-geoip.zeek, dest: /usr/local/zeek/share/zeek/site/conn-geoip.zeek }
+
+- name: Add Network CIDR to Monitor and GeoIP Feature
+  blockinfile:
+    path: "{{item.path}}"
+    block: |
+      {{item.content}}
+  with_items:
+   - {path: /usr/local/zeek/etc/networks.cfg , content: "{{ network_cidr }}    Private address space" }
+   - {path: /usr/local/zeek/share/zeek/site/local.zeek , content: "@load site/conn-geoip" }
+
+- name: Configure GeoIP Database Path
+  replace:
+    path: "{{item.path}}"
+    regexp: "{{item.regexp}}"
+    replace: "{{item.replace}}"
+  with_items:
+    - {path: /usr/local/zeek/share/zeek/base/init-bare.zeek , regexp: '^(const mmdb_dir: string = "") &redef;$', replace: 'const mmdb_dir: string = "/usr/share/GeoIP" &redef;'}
+
+- name: Configure Network Interface
+  lineinfile:
+    path: "{{item.path}}"
+    regexp: "{{item.regexp}}"
+    line: "{{item.line}}"
+  with_items:
+    - {path: /usr/local/zeek/etc/node.cfg , regexp: '^interface=.*', line: 'interface={{ host_interface }}'}
+
+- name: Restart Zeek
+  shell: systemctl restart zeek

@@ -1,0 +1,16 @@
+---
+- name: Start Zeek
+  service:  
+    name: zeek
+    state: started 
+    enabled: yes
+
+- name: Reload Zeek
+  service:
+    name: zeek
+    state: reloaded
+
+- name: Restart Zeek
+  service:  
+    name: zeek
+    state: restarted 

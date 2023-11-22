@@ -1,0 +1,31 @@
+- name: Download Maxmind GeoIPUpdate and Checksum File
+  get_url:
+    url: https://github.com/maxmind/geoipupdate/releases/download/v{{Version}}/geoipupdate_{{Version}}_{{OS}}_{{Architecture}}.deb
+    dest: "{{ansible_env.PWD}}/"
+    checksum: sha256:https://github.com/maxmind/geoipupdate/releases/download/v{{Version}}/geoipupdate_{{Version}}_checksums.txt
+
+- name: Install GeoIPUpdate Package
+  apt:
+    deb: "{{ansible_env.PWD}}/geoipupdate_{{Version}}_{{OS}}_{{Architecture}}.deb"
+
+- name: Update AccountID and LicenseKey in GeoIP.conf
+  lineinfile:
+    path: /etc/GeoIP.conf
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: '^AccountID .*', line: 'AccountID {{ maxmind_account_id }}' }
+    - { regexp: '^LicenseKey .*', line: 'LicenseKey {{ maxmind_license_key }}' }
+    - { regexp: '^EditionIDs .*', line: 'EditionIDs GeoLite2-ASN GeoLite2-Country GeoLite2-City' }
+
+- name: Initial Mindmax Database Download
+  shell: geoipupdate
+  run_once: true
+
+- name: Add GeoIPUpdate Cronjob
+  cron:
+    name: "geoip_update"
+    minute: "5"
+    hour: "11"
+    weekday: "2,5"
+    job: "/usr/local/bin/geoipupdate"

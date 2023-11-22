@@ -6,5 +6,5 @@
   force_handlers: true
   roles:
     - nftables
-    # - iptables
+    - zeek
   
