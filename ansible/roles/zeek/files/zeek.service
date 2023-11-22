@@ -1,0 +1,19 @@
+[Unit]
+Description=Zeek Network Security Monitor
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/usr/local/zeek/bin/zeekctl deploy
+ExecReload=/usr/bin/kill -HUP $MAINPID
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+DevicePolicy=closed
+RestrictSUIDSGID=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target

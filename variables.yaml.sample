@@ -1,6 +1,8 @@
 --- 
 box_name: "INSERT_BOX_NAME"
 checksum_type: "INSERT_CHECKSUM_TYPE"
+maxmind_account_id: "INSERT_MAXMIND_ACCOUNT_ID"
+maxmind_license_key: "INSERT_MAXMIND_LICENSE_KEY"
 user: "INSERT_NORMALUSER"
 user_password: "INSERT_NORMALUSER_PASSWORD" 
 root_password: "INSERT_ROOTUSER_PASSWORD"

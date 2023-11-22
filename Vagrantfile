@@ -36,20 +36,22 @@ Vagrant.configure("2") do |config|
     nhidps.vm.provision "shell", run: "once", inline: <<-SCRIPT
       cat /home/#{vars['user']}/#{vars['box_name']}/nhidps.pub >> /home/#{vars['user']}/.ssh/authorized_keys
       echo "#{vars['user']}:#{vars['user_password']}" | sudo chpasswd
-      echo -e "nameserver 1.1.1.3\nnameserver 1.0.0.3" | sudo tee /etc/resolv.conf
-      sudo nmcli connection modify "Wired connection 1" ipv4.dns "1.1.1.3 1.0.0.3"
+      sudo nmcli connection modify "Wired connection 1" ipv4.dns "208.67.222.123 208.67.220.123"
       sudo nmcli connection modify "Wired connection 1" ipv6.method "disabled"
       sudo systemctl restart NetworkManager 
       sudo apt update -y --fix-missing && sudo apt upgrade -y && sudo apt autoremove -y
       echo "root:#{vars['root_password']}" | sudo chpasswd
     SCRIPT
     nhidps.vm.provision :ansible do |ansible|
+      ansible.config_file = "ansible/ansible.cfg"
       ansible.playbook = "ansible/vagrant.yml"
       ansible.extra_vars = {
         ansible_ssh_private_key_file: "nhidps",
-        ansible_python_interpreter: "/usr/bin/python3"
+        ansible_python_interpreter: "/usr/bin/python3",
+        maxmind_account_id: "#{vars['maxmind_account_id']}",
+        maxmind_license_key: "#{vars['maxmind_license_key']}"
       }
-      ansible.verbose = "vvvv"
+      ansible.verbose = "v"
     end
   end 
 end
