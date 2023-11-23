@@ -32,6 +32,7 @@
   when: downloads.changed
 
 - name: Unpack Zeek Package
+  become_user: "{{ansible_env.SUDO_USER}}"
   unarchive:
     src: "{{ansible_env.PWD}}/zeek-{{Version}}.tar.gz"
     dest: "{{ansible_env.PWD}}/"
