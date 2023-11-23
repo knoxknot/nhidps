@@ -1,0 +1,16 @@
+---
+- name: Start Suricata
+  service:  
+    name: suricata
+    state: started 
+    enabled: yes
+
+- name: Reload Suricata
+  service:
+    name: suricata
+    state: reloaded
+
+- name: Restart Suricata
+  service:  
+    name: suricata
+    state: restarted 

@@ -1,0 +1,99 @@
+---
+- name: Identify Non-loopback Interface
+  set_fact:
+    host_interface: "{{ ansible_facts.interfaces | reject('search', '^lo$') | first }}"
+
+- name: Identify Network CIDR for Non-loopback Interface
+  set_fact:
+    network_cidr: "{{ ansible_facts[host_interface].ipv4.network }}/{{ansible_facts[host_interface].ipv4.prefix }}"
+  when: host_interface is defined
+
+- name: Install Prerequisite Packages
+  apt:
+    name:     
+     - cargo 
+     - libjansson-dev 
+     - libpcap-dev 
+     - libpcre2-dev 
+     - libmaxminddb-dev 
+     - libnetfilter-queue-dev 
+     - libssl-dev 
+     - libyaml-dev 
+     - pkg-config 
+     - rustc 
+    state: present
+    update_cache: yes
+
+- name: Download Suricata Package
+  get_url:
+    url: https://www.openinfosecfoundation.org/download/suricata-{{Version}}.tar.gz
+    dest: "{{ansible_env.PWD}}/"
+    checksum: sha256:b4eb604838ef99a8396bc8b7bb54cad11f2442cbd7cbb300e7f5aab19097bc4d
+
+- name: Unpack the Suricata Package
+  unarchive:
+    src: "{{ansible_env.PWD}}/suricata-{{Version}}.tar.gz"
+    dest: "{{ansible_env.PWD}}/"
+    remote_src: yes
+
+- name: Build and Install Suricata
+  shell: |
+    ./configure --prefix=/usr/ --sysconfdir=/etc/ --localstatedir=/var/ --enable-geoip --enable-nfqueue
+    make
+    make install-full
+  args:
+    chdir: "{{ansible_env.PWD}}/suricata-{{Version}}"
+
+- name: Add Systemd Service Files
+  copy:
+    src: suricata.service
+    dest: /etc/systemd/system/suricata.service
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Configure CIDR, Community ID and GeoIP Settings
+  lineinfile:
+    path: /etc/suricata/suricata.yaml
+    regexp: '{{ item.regexp }}'
+    line: '{{ item.line }}'
+  loop:
+    - { regexp: '^(\s+HOME_NET:\s+).*', line: '    HOME_NET: "[{{ network_cidr }}]"' }
+    - { regexp: '^(\s+community-id:\s+)false$', line: '      community-id: true' }
+    - { regexp: '^#geoip-database: .*', line: 'geoip-database: /usr/share/GeoIP/GeoLite2-Country.mmdb'}
+
+- name: Configure Interface, NFQ and PCAP Settings
+  replace:
+    path: /etc/suricata/suricata.yaml
+    regexp: '{{ item.regexp }}'
+    replace: '{{ item.replace }}'
+  loop:
+    - { regexp: '(^\s*af-packet:\s*- interface:\s*)eth0', replace: '\1{{ host_interface }}' }
+    - { regexp: '(^\s*- pcap-log:\s*enabled:\s*)no', replace: '\1yes' }
+    - { regexp: '^(\s*)#(.*mode: accept|.*fail-open: yes)', replace: '\1\2' }
+
+- name: Restart Suricata
+  shell: systemctl enable suricata && systemctl start suricata
+  register: run_suricata
+
+- name: Install Suricata Rules
+  shell: |
+    sudo suricata-update update-sources 
+    for name in $(echo "oisf/trafficid et/open sslbl/ssl-fp-blacklist sslbl/ja3-fingerprints etnetera/aggressive tgreen/hunting stamus/lateral"); do sudo suricata-update enable-source $name; done
+  when: run_suricata.changed
+
+- name: Add NFTables Rules
+  copy:
+    src: nfqueue.nft
+    dest: /etc/nftables.conf
+    owner: root
+    group: root
+    mode: 0755
+  register: ruleset
+
+- name: Validate and Apply Firewall Rules
+  shell: |
+    /etc/nftables.conf -c 
+    /etc/nftables.conf
+    systemctl restart nftables
+  when: ruleset.changed
