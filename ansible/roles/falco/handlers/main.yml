@@ -1,0 +1,16 @@
+---
+- name: Start Falco
+  service:  
+    name: falco-modern-bpf
+    state: started 
+    enabled: yes
+
+- name: Reload Falco
+  service:
+    name: falco-modern-bpf
+    state: reloaded
+
+- name: Restart Falco
+  service:  
+    name: falco-modern-bpf
+    state: restarted 

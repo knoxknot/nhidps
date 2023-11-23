@@ -1,0 +1,38 @@
+---
+- name: Install Falco
+  block:
+    - name: Download Falco Key
+      shell: |
+        curl --tlsv1.3 -s https://falco.org/repo/falcosecurity-packages.asc | gpg --dearmor -o /usr/share/keyrings/falco-archive-keyring.gpg
+
+    - name: Add Falco Source 
+      apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/falco-archive-keyring.gpg] https://download.falco.org/packages/deb stable main"
+        state: present
+        update_cache: yes
+
+    - name: Install Falco
+      apt:
+        name: falco
+
+- name: Create Falco Log File
+  file:
+    path: /var/log/falco.json
+    state: touch
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Configure Falco Settings
+  replace:
+    path: /etc/falco/falco.yaml
+    regexp: '{{ item.regexp }}'
+    replace: '{{ item.replace }}'
+  loop:
+    - { regexp: '^(\s*)(.*json_output: false)', replace: 'json_output: true' }
+    - { regexp: '(^\s*file_output:\s*enabled:\s*)false', replace: '\1true' }
+    - { regexp: 'filename: .*', replace: 'filename: /var/log/falco.json' }
+  notify: "Start Falco"
+
+- name: Ensure Falco Runs
+  shell: systemctl enable falco-modern-bpf && systemctl start falco-modern-bpf
