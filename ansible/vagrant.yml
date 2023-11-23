@@ -8,4 +8,5 @@
     - nftables
     - zeek
     - suricata
+    - falco
   
