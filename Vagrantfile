@@ -24,7 +24,7 @@ Vagrant.configure("2") do |config|
     vb.name = "nhidps"
     vb.gui = true
     vb.cpus = "2"
-    vb.memory = "2048"
+    vb.memory = "3072"
     vb.customize ["modifyvm", :id, "--clipboard-mode", "bidirectional", "--vram", "8"]
     vb.customize ["setextradata", :id, "VBoxInternal2/EfiGopMode", "1"]
   end

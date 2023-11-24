@@ -1,0 +1,15 @@
+#!/bin/bash
+ZED_PATH="/opt/Zui/resources/app.asar.unpacked/zdeps"
+POOLNAME="falco"
+FALCO_LOGFILE="/var/log/falco.json"
+if [ ! -e "$FALCO_LOGFILE" ]; then
+  /usr/bin/touch "$FALCO_LOGFILE"
+  /usr/bin/chmod 644 "$FALCO_LOGFILE"
+fi
+if ! $ZED_PATH/zed ls "$POOLNAME" &> /dev/null; then
+  # create a pool
+  $ZED_PATH/zed create "$POOLNAME"  
+  $ZED_PATH/zed load -use $POOLNAME -i json $FALCO_LOGFILE
+else
+  $ZED_PATH/zed load -use $POOLNAME -i json $FALCO_LOGFILE
+fi

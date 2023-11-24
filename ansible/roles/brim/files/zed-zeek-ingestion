@@ -1,0 +1,28 @@
+#!/bin/bash
+DATE="$(date +'%Y-%m-%d')"
+POOLNAME="zeek"
+ZEEK_LOGPATH="/usr/local/zeek/logs"
+ZED_PATH="/opt/Zui/resources/app.asar.unpacked/zdeps"
+exclude=("telemetry" "reporter" "stderr" "loaded_scripts" "stdout" "analyzer")
+if ! $ZED_PATH/zed ls "$POOLNAME" &> /dev/null; then
+  # create a pool
+  $ZED_PATH/zed create "$POOLNAME"  
+fi
+for file in $ZEEK_LOGPATH/${DATE}/*.log.gz; do 
+  filename=$(basename "$file")
+  exclude_file=false
+  for keyword in "${exclude[@]}"; do
+    if [[ "$filename" == *"$keyword"* ]]; then
+      exclude_file=true
+      break
+    fi
+  done
+  if [ "$exclude_file" = false ]; then
+    gzip -dk "$file"
+    $ZED_PATH/zed load -use $POOLNAME -i zeek "$file"
+  fi
+done
+for file in $(ls $ZEEK_LOGPATH/current/*.log | grep -Ev 'telemetry|reporter|stderr|loaded_scripts|stdout|analyzer'); do 
+  $ZED_PATH/zed load -use $POOLNAME -i zeek "$file" 
+done
+sleep 90 && rm -f $ZEEK_LOGPATH/${DATE}/*.log

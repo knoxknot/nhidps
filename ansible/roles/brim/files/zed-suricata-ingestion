@@ -1,0 +1,12 @@
+#!/bin/bash
+POOLNAME="suricata"
+ZED_PATH="/opt/Zui/resources/app.asar.unpacked/zdeps"
+SURICATA_LOGFILE="/var/log/suricata/eve.json"
+if ! $ZED_PATH/zed ls "$POOLNAME" &> /dev/null; then
+  $ZED_PATH/zed create "$POOLNAME"
+fi
+if $ZED_PATH/zed ls "$POOLNAME" &> /dev/null; then
+  $ZED_PATH/zed load -use "$POOLNAME" -i json "$SURICATA_LOGFILE"
+else
+  echo "Error: The pool does not exist or could not be created."
+fi
