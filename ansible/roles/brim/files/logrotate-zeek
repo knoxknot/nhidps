@@ -1,0 +1,9 @@
+#!/bin/bash
+ZEEK_LOGPATH="/usr/local/zeek/logs"
+TODAYS_DATE=$(date +"%Y-%m-%d")
+find "$ZEEK_LOGPATH" -mindepth 1 -type d | while read -r folder; do
+  folder_name=$(basename "$folder")
+  if [ "$folder_name" != "current" ] && [ "$folder_name" != "$TODAYS_DATE" ]; then
+    rm -r "$folder"
+  fi
+done

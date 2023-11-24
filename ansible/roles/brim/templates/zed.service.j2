@@ -1,0 +1,20 @@
+[Unit]
+Description=Zed Data Ingestion Service
+After=network.target
+
+[Service]
+Type=simple
+User={{ service_user.stdout }}
+ExecStart=/opt/Zui/resources/app.asar.unpacked/zdeps/zed serve -l="127.0.0.1:9867" -lake="/home/{{ service_user.stdout }}/.config/Zui/lake"
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+DevicePolicy=closed
+RestrictSUIDSGID=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+RestrictNamespaces=~ipc net
+
+[Install]
+WantedBy=multi-user.target

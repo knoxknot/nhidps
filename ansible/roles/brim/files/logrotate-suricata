@@ -1,0 +1,23 @@
+/var/log/suricata/eve.json {
+  daily
+  rotate 1
+  dateext
+  dateformat -%Y%m%d%H
+  extension .json
+  missingok
+  notifempty
+  sharedscripts
+  postrotate
+    systemctl restart suricata
+  endscript
+}
+
+/var/log/suricata/*.log /var/log/suricata/log.pcap.* {
+  daily
+  rotate 1
+  dateext
+  dateformat -%Y%m%d%H
+  missingok
+  notifempty
+  create
+}

@@ -1,0 +1,16 @@
+---
+- name: Start Zed
+  service:  
+    name: zed
+    state: started 
+    enabled: yes
+
+- name: Reload Zed
+  service:
+    name: zed
+    state: reloaded
+
+- name: Restart Zed
+  service:  
+    name: zed
+    state: restarted 

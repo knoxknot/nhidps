@@ -1,0 +1,11 @@
+/var/log/falco.json {
+  daily
+  maxsize 100M
+  rotate 1
+  dateext
+  dateformat -%Y%m%d%H
+  extension .json
+  create 0644 root root
+  missingok
+  notifempty
+}

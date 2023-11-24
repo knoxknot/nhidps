@@ -1,0 +1,5 @@
+#!/bin/bash
+ZED_PATH="/opt/Zui/resources/app.asar.unpacked/zdeps"
+for pool in $($ZED_PATH/zed ls | awk '{print $1}'); do
+  $ZED_PATH/zed drop -f $pool
+done

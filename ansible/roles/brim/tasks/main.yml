@@ -1,0 +1,97 @@
+---
+- name: Identify Non-loopback Interface
+  set_fact:
+    host_interface: "{{ ansible_facts.interfaces | reject('search', '^lo$') | first }}"
+
+- name: Identify Network CIDR for Non-loopback Interface
+  set_fact:
+    network_cidr: "{{ ansible_facts[host_interface].ipv4.network }}/{{ansible_facts[host_interface].ipv4.prefix }}"
+  when: host_interface is defined
+
+- name: Define Service User
+  shell: "echo $(getent passwd | awk -F: '/1000/ {print $1}')"
+  register: service_user
+
+- name: Download BrimData ZUI Debian Package
+  get_url:
+    url: https://github.com/brimdata/zui/releases/download/v{{Version}}/zui_{{Version}}_{{Architecture}}.deb
+    dest: "{{ansible_env.PWD}}/"
+    checksum: sha256:d6ae3abe1bedf33c0c715cbb27b7ab19abb4b6ae51154e217508f49c38a23b05
+
+- name: Install ZUI Package
+  apt:
+    deb: "{{ansible_env.PWD}}/zui_{{Version}}_{{Architecture}}.deb"
+
+- name: Add ZUI Dependencies to PATH
+  blockinfile:
+    path: "{{ansible_env.PWD}}/.bash_aliases"
+    block: |
+      PATH="/opt/Zui/resources/app.asar.unpacked/zdeps:$PATH"
+
+- name: Add Systemd Service Files
+  template:
+    src: zed.service.j2
+    dest: /etc/systemd/system/zed.service
+    owner: root
+    group: root
+    mode: 0644
+  notify: "Start Zed"
+
+- name: Add Falco and Suricata Log Rotation
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: 0644
+  with_items: 
+    - { src: logrotate-falco , dest: /etc/logrotate.d/falco }
+    - { src: logrotate-suricata , dest: /etc/logrotate.d/suricata }
+
+- name: Create Scripts Directory
+  file:
+    path: /opt/scripts/
+    state: directory
+    mode: 0755
+
+- name: Add Data Ingestion and Log Rotation Scripts
+  copy:
+    src: "{{ item.src }}"
+    dest: "/opt/scripts/{{ item.dest }}"
+    owner: root
+    group: root
+    mode: 0751
+  with_items: 
+    - { src: logrotate-zed, dest: zed-log-rotation }
+    - { src: logrotate-zeek, dest: zeek-log-rotation }
+    - { src: zed-falco-ingestion, dest: zed-falco-ingestion }
+    - { src: zed-suricata-ingestion, dest: zed-suricata-ingestion }
+    - { src: zed-zeek-ingestion, dest: zed-zeek-ingestion }
+  register: brim_scripts
+
+- name: Run the Scripts
+  shell: |
+    /opt/scripts/zed-log-rotation
+    /opt/scripts/zeek-log-rotation
+    /opt/scripts/zed-falco-ingestion
+    /opt/scripts/zed-suricata-ingestion
+    /opt/scripts/zed-zeek-ingestion
+  run_once: true
+  when: brim_scripts.changed
+
+- name: Setup Cronjobs
+  cron:
+    name: "{{ item.name }}"
+    minute: "{{ item.minute }}"
+    hour: "{{ item.hour }}"
+    weekday: "{{ item.weekday }}"
+    job: "{{ item.job }}"
+  loop:
+    - { name: zed-log-rotation, minute: '3', hour: '19', weekday: '7', job: /opt/scripts/zed-log-rotation }
+    - { name: zeek-log-rotation, minute: '0', hour: '10', weekday: '1,4,6', job: /opt/scripts/zeek-log-rotation }
+    - { name: zed-falco-ingestion, minute: '*/15', hour: '*', weekday: '*', job: /opt/scripts/zed-falco-ingestion }
+    - { name: zed-suricata-ingestion, minute: '*/5', hour: '*', weekday: '*' , job: /opt/scripts/zed-suricata-ingestion }
+    - { name: zed-zeek-ingestion, minute: '*/10', hour: '*', weekday: '*', job: /opt/scripts/zed-zeek-ingestion }
+
+- name: Restart Zed
+  shell: systemctl restart zed
