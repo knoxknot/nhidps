@@ -1,9 +1,15 @@
 ---
+- name: Check Falco Key
+  stat:
+    path: /usr/share/keyrings/falco-archive-keyring.gpg
+  register: falco_key
+
 - name: Install Falco
   block:
     - name: Download Falco Key
       shell: |
         curl --tlsv1.3 -s https://falco.org/repo/falcosecurity-packages.asc | gpg --dearmor -o /usr/share/keyrings/falco-archive-keyring.gpg
+      when: not falco_key.stat.exists
 
     - name: Add Falco Source 
       apt_repository:
