@@ -111,6 +111,7 @@
     line: "{{item.line}}"
   with_items:
     - {path: /usr/local/zeek/etc/node.cfg , regexp: '^interface=.*', line: 'interface={{ host_interface }}'}
+  notify: "Start Zeek"
 
 - name: Restart Zeek
-  shell: systemctl restart zeek
+  shell: systemctl enable zeek && systemctl restart zeek

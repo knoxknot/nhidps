@@ -5,9 +5,10 @@
       - nftables
     state: present
     update_cache: yes
+  notify: "Start NFTables"
 
-- name: Start NFTables and Netfilter
-  shell: systemctl start nftables
+- name: Start NFTables
+  shell: systemctl enable nftables && systemctl start nftables
 
 - name: Add NFTables Rules
   copy:
